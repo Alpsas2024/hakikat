@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veritas Mechanic — LLM'ler İçin Hakikat Katmanı</title>
+  <meta name="description" content="HIPAA · GDPR · KVKK uyumlu PHI tarama API'si. LLM'e göndermeden önce kişisel veriyi maskele, her işlemi WORM zincirine mühürle.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #04080d;
+      --panel:   #080f18;
+      --border:  #1a2a1a;
+      --green:   #00ff88;
+      --gold:    #ffd700;
+      --cyan:    #00d4ff;
+      --red:     #ff4444;
+      --text:    #c8e0c8;
+      --muted:   #556655;
+      --accent:  #00ff88;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--green); border-radius: 2px; }
+
+    /* ── UTILS ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .gold { color: var(--gold); }
+    .green { color: var(--green); }
+    .cyan { color: var(--cyan); }
+    .muted { color: var(--muted); }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+      background: rgba(4, 8, 13, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,255,136,0.1);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: 1100px; margin: 0 auto; padding: 0 24px; height: 60px;
+    }
+    .nav-logo {
+      font-family: 'Orbitron', monospace; font-weight: 900;
+      font-size: 15px; color: var(--green); letter-spacing: 0.05em;
+    }
+    .nav-logo span { color: var(--gold); }
+    .nav-links { display: flex; gap: 28px; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none; font-size: 13px;
+      font-weight: 500; letter-spacing: 0.05em; transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--green); }
+    .btn-nav {
+      background: var(--green); color: #000; border: none;
+      padding: 8px 18px; border-radius: 4px; font-family: 'Orbitron'; font-size: 10px;
+      font-weight: 700; cursor: pointer; letter-spacing: 0.05em; transition: 0.2s;
+    }
+    .btn-nav:hover { opacity: 0.85; }
+
+    /* ── HERO ── */
+    #hero {
+      min-height: 100vh; display: flex; align-items: center;
+      padding: 100px 0 80px;
+      background:
+        radial-gradient(ellipse 60% 60% at 70% 40%, rgba(0,255,136,0.04) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 30% 70%, rgba(255,215,0,0.03) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid rgba(0,255,136,0.3); background: rgba(0,255,136,0.05);
+      padding: 6px 14px; border-radius: 20px; font-size: 11px; font-family: 'JetBrains Mono';
+      color: var(--green); margin-bottom: 28px; letter-spacing: 0.08em;
+    }
+    .hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+    h1 {
+      font-family: 'Orbitron', monospace; font-size: clamp(32px, 5vw, 58px);
+      font-weight: 900; line-height: 1.1; color: #fff; margin-bottom: 24px;
+      letter-spacing: -0.01em;
+    }
+    h1 .accent { color: var(--green); }
+    h1 .sub { color: var(--gold); }
+
+    .hero-desc {
+      font-size: 18px; color: var(--muted); max-width: 580px;
+      line-height: 1.7; margin-bottom: 36px;
+    }
+    .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+
+    .btn-primary {
+      background: var(--green); color: #000; border: none;
+      padding: 14px 32px; border-radius: 6px; font-family: 'Orbitron'; font-size: 11px;
+      font-weight: 700; cursor: pointer; letter-spacing: 0.08em; transition: 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: transparent; color: var(--text); border: 1px solid var(--border);
+      padding: 14px 32px; border-radius: 6px; font-family: 'Orbitron'; font-size: 11px;
+      font-weight: 700; cursor: pointer; letter-spacing: 0.08em; transition: 0.2s;
+      text-decoration: none; display: inline-block;
+    }
+    .btn-secondary:hover { border-color: var(--green); color: var(--green); }
+
+    .hero-stats {
+      display: flex; gap: 40px; margin-top: 56px; flex-wrap: wrap;
+    }
+    .stat { }
+    .stat-num {
+      font-family: 'Orbitron'; font-size: 28px; font-weight: 900; color: var(--green);
+    }
+    .stat-label { font-size: 12px; color: var(--muted); letter-spacing: 0.05em; margin-top: 2px; }
+
+    /* ── SECTION ── */
+    section { padding: 96px 0; }
+    .section-tag {
+      display: inline-block; font-family: 'JetBrains Mono'; font-size: 11px;
+      color: var(--green); letter-spacing: 0.1em; border: 1px solid rgba(0,255,136,0.2);
+      padding: 4px 12px; border-radius: 12px; background: rgba(0,255,136,0.05);
+      margin-bottom: 16px;
+    }
+    h2 {
+      font-family: 'Orbitron'; font-size: clamp(22px, 3vw, 34px);
+      font-weight: 900; color: #fff; margin-bottom: 16px; line-height: 1.2;
+    }
+    .section-desc { color: var(--muted); max-width: 560px; margin-bottom: 56px; font-size: 15px; }
+
+    /* ── PROBLEM ── */
+    #problem { background: var(--panel); }
+    .problem-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+    .problem-card {
+      padding: 28px; border-radius: 12px;
+      border: 1px solid rgba(255,68,68,0.2); background: rgba(255,68,68,0.04);
+    }
+    .problem-icon { font-size: 28px; margin-bottom: 16px; }
+    .problem-card h3 { font-size: 16px; font-weight: 700; color: var(--red); margin-bottom: 10px; font-family: 'Orbitron'; font-size: 13px; }
+    .problem-card p { color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .problem-card .fine { color: var(--red); font-weight: 700; font-size: 20px; margin-top: 14px; font-family: 'Orbitron'; }
+
+    /* ── HOW IT WORKS ── */
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 32px; margin-top: 56px; }
+    .step {
+      text-align: center; padding: 32px 24px;
+      border: 1px solid var(--border); border-radius: 12px; background: var(--panel);
+      position: relative;
+    }
+    .step-num {
+      font-family: 'Orbitron'; font-size: 11px; color: var(--green);
+      border: 1px solid rgba(0,255,136,0.3); padding: 4px 10px;
+      border-radius: 4px; display: inline-block; margin-bottom: 18px; letter-spacing: 0.1em;
+    }
+    .step h3 { font-family: 'Orbitron'; font-size: 14px; color: #fff; margin-bottom: 12px; }
+    .step p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .step-icon { font-size: 32px; margin-bottom: 16px; display: block; }
+    .step-arrow {
+      position: absolute; right: -20px; top: 50%; transform: translateY(-50%);
+      color: var(--green); font-size: 20px; z-index: 2;
+    }
+
+    /* ── PLAYGROUND ── */
+    #playground { background: var(--panel); }
+    .playground-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 700px) { .playground-wrap { grid-template-columns: 1fr; } }
+
+    .pane {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+    }
+    .pane-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 18px; border-bottom: 1px solid var(--border);
+      font-family: 'JetBrains Mono'; font-size: 11px; color: var(--muted);
+    }
+    .pane-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+    textarea, .output-box {
+      width: 100%; min-height: 200px; padding: 16px 18px;
+      background: transparent; border: none; outline: none;
+      color: var(--text); font-family: 'JetBrains Mono'; font-size: 13px;
+      line-height: 1.6; resize: vertical;
+    }
+    .output-box {
+      min-height: 200px; overflow-y: auto; word-break: break-all;
+    }
+    .masked { color: #888; background: rgba(255,68,68,0.15); padding: 1px 4px; border-radius: 2px; }
+    .safe { color: var(--green); }
+
+    .scan-controls {
+      display: flex; gap: 12px; align-items: center;
+      padding: 12px 18px; border-top: 1px solid var(--border); flex-wrap: wrap;
+    }
+    .btn-scan {
+      background: var(--green); color: #000; border: none;
+      padding: 10px 24px; border-radius: 6px; font-family: 'Orbitron'; font-size: 10px;
+      font-weight: 700; cursor: pointer; letter-spacing: 0.08em; transition: 0.2s;
+    }
+    .btn-scan:hover { opacity: 0.85; }
+    .btn-scan:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .badge-count {
+      font-family: 'JetBrains Mono'; font-size: 12px; color: var(--red);
+      border: 1px solid rgba(255,68,68,0.3); padding: 4px 10px; border-radius: 4px;
+      background: rgba(255,68,68,0.05);
+    }
+    .badge-safe {
+      font-family: 'JetBrains Mono'; font-size: 12px; color: var(--green);
+      border: 1px solid rgba(0,255,136,0.3); padding: 4px 10px; border-radius: 4px;
+      background: rgba(0,255,136,0.05);
+    }
+
+    .worm-box {
+      margin-top: 24px; padding: 20px;
+      background: var(--bg); border: 1px solid rgba(255,215,0,0.2);
+      border-radius: 10px;
+    }
+    .worm-title {
+      font-family: 'JetBrains Mono'; font-size: 11px; color: var(--gold);
+      letter-spacing: 0.1em; margin-bottom: 14px;
+    }
+    .worm-row {
+      display: flex; gap: 12px; margin-bottom: 8px; font-family: 'JetBrains Mono'; font-size: 12px;
+    }
+    .worm-key { color: var(--muted); width: 120px; flex-shrink: 0; }
+    .worm-val { color: var(--text); word-break: break-all; }
+    .worm-val.hash { color: var(--gold); }
+
+    .phi-violations {
+      margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .phi-tag {
+      font-family: 'JetBrains Mono'; font-size: 10px; padding: 3px 8px;
+      border-radius: 3px; border: 1px solid rgba(255,68,68,0.4); color: var(--red);
+      background: rgba(255,68,68,0.05);
+    }
+
+    /* ── ROI CALC ── */
+    #roi { }
+    .roi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    @media (max-width: 700px) { .roi-grid { grid-template-columns: 1fr; } }
+
+    .roi-inputs {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 28px;
+    }
+    .roi-inputs h3 { font-family: 'Orbitron'; font-size: 14px; color: #fff; margin-bottom: 24px; }
+    .roi-field { margin-bottom: 20px; }
+    .roi-field label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; font-family: 'JetBrains Mono'; }
+    .roi-field input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); padding: 10px 14px; border-radius: 6px;
+      font-family: 'JetBrains Mono'; font-size: 14px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .roi-field input:focus { border-color: var(--green); }
+
+    .roi-results {
+      background: var(--panel); border: 1px solid rgba(0,255,136,0.2);
+      border-radius: 12px; padding: 28px; display: flex; flex-direction: column; gap: 16px;
+    }
+    .roi-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+    }
+    .roi-row:last-child { border-bottom: none; }
+    .roi-row-label { font-size: 14px; color: var(--muted); }
+    .roi-row-val { font-family: 'Orbitron'; font-size: 16px; font-weight: 700; }
+    .roi-row-val.bad { color: var(--red); }
+    .roi-row-val.good { color: var(--green); }
+
+    .roi-savings {
+      margin-top: 16px; padding: 20px;
+      background: rgba(0,255,136,0.05); border: 1px solid rgba(0,255,136,0.3);
+      border-radius: 8px; text-align: center;
+    }
+    .roi-savings-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-family: 'JetBrains Mono'; letter-spacing: 0.1em; }
+    .roi-savings-amount { font-family: 'Orbitron'; font-size: 36px; font-weight: 900; color: var(--green); }
+
+    /* ── SDK ── */
+    #sdk { background: var(--panel); }
+    .sdk-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 0; }
+    .sdk-tab {
+      background: transparent; border: none; color: var(--muted);
+      padding: 12px 20px; cursor: pointer; font-family: 'JetBrains Mono'; font-size: 12px;
+      border-bottom: 2px solid transparent; transition: 0.2s; letter-spacing: 0.05em;
+    }
+    .sdk-tab.active { color: var(--green); border-bottom-color: var(--green); }
+    .sdk-tab:hover { color: var(--text); }
+
+    .sdk-content { display: none; }
+    .sdk-content.active { display: block; }
+
+    .install-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 18px; background: var(--bg); border-bottom: 1px solid var(--border);
+    }
+    .install-bar code { font-family: 'JetBrains Mono'; font-size: 13px; color: var(--gold); }
+    .btn-copy {
+      background: transparent; border: 1px solid var(--border); color: var(--muted);
+      padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: 0.2s;
+    }
+    .btn-copy:hover { border-color: var(--green); color: var(--green); }
+
+    .code-block {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden;
+    }
+    pre {
+      padding: 20px 24px; overflow-x: auto;
+      font-family: 'JetBrains Mono'; font-size: 13px; line-height: 1.8;
+    }
+    .kw { color: #cc99cd; }
+    .fn { color: #6fb3d2; }
+    .str { color: #7ec699; }
+    .cm { color: var(--muted); font-style: italic; }
+    .var { color: #f8f8f2; }
+    .num { color: var(--gold); }
+
+    /* ── API REF ── */
+    #api { }
+    .endpoint {
+      border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden; margin-bottom: 16px;
+    }
+    .endpoint-header {
+      display: flex; align-items: center; gap: 16px;
+      padding: 16px 20px; cursor: pointer;
+      background: var(--panel); transition: 0.2s;
+    }
+    .endpoint-header:hover { background: rgba(0,255,136,0.04); }
+    .method {
+      font-family: 'Orbitron'; font-size: 10px; font-weight: 700;
+      padding: 4px 10px; border-radius: 4px; letter-spacing: 0.08em;
+    }
+    .method.post { background: rgba(0,255,136,0.15); color: var(--green); }
+    .method.get  { background: rgba(0,212,255,0.15); color: var(--cyan); }
+    .path { font-family: 'JetBrains Mono'; font-size: 14px; color: var(--text); }
+    .endpoint-desc { font-size: 13px; color: var(--muted); margin-left: auto; }
+
+    .endpoint-body {
+      display: none; padding: 20px 24px;
+      border-top: 1px solid var(--border); background: var(--bg);
+    }
+    .endpoint-body.open { display: block; }
+    .endpoint-body p { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 14px; color: var(--muted); font-family: 'JetBrains Mono'; font-size: 11px; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 14px; border-bottom: 1px solid rgba(26,42,26,0.5); color: var(--text); }
+    td:first-child { font-family: 'JetBrains Mono'; color: var(--green); }
+
+    /* ── PRICING ── */
+    #pricing { background: var(--panel); }
+    .price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+    .price-card {
+      padding: 28px 24px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--bg); display: flex; flex-direction: column; gap: 14px;
+    }
+    .price-card.featured {
+      border-color: var(--green); background: rgba(0,255,136,0.04);
+    }
+    .price-tag { font-family: 'JetBrains Mono'; font-size: 10px; color: var(--green); letter-spacing: 0.1em; }
+    .price-name { font-family: 'Orbitron'; font-size: 15px; color: #fff; }
+    .price-amount { font-family: 'Orbitron'; font-size: 30px; font-weight: 900; color: var(--gold); }
+    .price-amount span { font-size: 14px; color: var(--muted); font-family: 'Rajdhani'; }
+    .price-desc { font-size: 13px; color: var(--muted); flex: 1; }
+    .price-cta {
+      display: block; text-align: center; padding: 10px;
+      border-radius: 6px; font-family: 'Orbitron'; font-size: 10px;
+      font-weight: 700; letter-spacing: 0.08em; cursor: pointer;
+      text-decoration: none; transition: 0.2s;
+    }
+    .price-card.featured .price-cta { background: var(--green); color: #000; }
+    .price-card.featured .price-cta:hover { opacity: 0.85; }
+    .price-card:not(.featured) .price-cta { border: 1px solid var(--border); color: var(--muted); }
+    .price-card:not(.featured) .price-cta:hover { border-color: var(--green); color: var(--green); }
+
+    /* ── CTA ── */
+    #cta {
+      text-align: center; padding: 120px 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,255,136,0.05) 0%, transparent 70%);
+    }
+    #cta h2 { margin-bottom: 16px; }
+    #cta p { color: var(--muted); margin-bottom: 36px; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border); padding: 32px 0;
+      text-align: center; font-size: 13px; color: var(--muted);
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--green); }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      background: var(--panel); border: 1px solid var(--green);
+      color: var(--green); padding: 12px 20px; border-radius: 8px;
+      font-family: 'JetBrains Mono'; font-size: 13px;
+      transform: translateY(100px); opacity: 0; transition: 0.3s;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ── API STATUS ── */
+    .api-status-bar {
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'JetBrains Mono'; font-size: 11px; color: var(--muted);
+    }
+    .api-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+    .api-dot.live { background: var(--green); animation: pulse 2s infinite; }
+    .api-dot.sim  { background: var(--gold); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .nav-links { display: none; }
+      .hero-stats { gap: 24px; }
+      .steps { grid-template-columns: 1fr; }
+      .step-arrow { display: none; }
+    }
+
+    /* ── HITL BUTTONS ── */
+    .btn-copy {
+      font-family: 'JetBrains Mono'; font-size: 11px;
+      padding: 6px 14px; border-radius: 4px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--green); cursor: pointer; transition: all 0.2s;
+    }
+    .btn-copy:hover { background: rgba(0,255,136,0.1); border-color: var(--green); }
+    .btn-copy:disabled { opacity: 0.3; cursor: default; }
+    .hash-copy { cursor:pointer; font-size:14px; opacity:0.5; transition: opacity 0.2s; }
+    .hash-copy:hover { opacity:1; }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────── -->
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">VERITAS<span>.</span>MECHANIC</div>
+    <div class="nav-links">
+      <a href="#playground">Playground</a>
+      <a href="#roi">ROI</a>
+      <a href="#sdk">SDK</a>
+      <a href="#pricing">Fiyat</a>
+    </div>
+    <button class="btn-nav" onclick="scrollTo('#cta')">API KEY AL</button>
+  </div>
+</nav>
+
+<!-- ── HERO ──────────────────────────────────────────── -->
+<section id="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      HIPAA &nbsp;·&nbsp; GDPR &nbsp;·&nbsp; KVKK
+    </div>
+    <h1>
+      LLM'inize<br>
+      <span class="accent">Hakikat Katmanı</span><br>
+      <span class="sub">Koy.</span>
+    </h1>
+    <p class="hero-desc">
+      Kullanıcı verisini yapay zekaya göndermeden önce 18 farklı PII/PHI desenini
+      milisaniyeler içinde maskele. Her taramayı SHA-256 WORM zincirine mühürle.
+      Mahkemede delil. Denetçiye kanıt.
+    </p>
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="document.getElementById('playground').scrollIntoView({behavior:'smooth'})">
+        PHI MOTORUNU ÇALIŞTIR
+      </button>
+      <a href="#sdk" class="btn-secondary">KOD ÖRNEK</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-num">&lt;2ms</div>
+        <div class="stat-label">TARAMA GECİKMESİ</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">18</div>
+        <div class="stat-label">PHI/PII DESENİ</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">$0</div>
+        <div class="stat-label">İLK 10K SORGU</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">SHA-256</div>
+        <div class="stat-label">WORM MÜHÜR</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PROBLEM ──────────────────────────────────────── -->
+<section id="problem">
+  <div class="container">
+    <div class="section-tag">SORUN</div>
+    <h2>LLM'e Gönderdiğin Her Satır Bir Risk</h2>
+    <p class="section-desc">
+      Bir sağlık asistanı, hukuk botu veya HR sistemi kursun — sonuç değişmiyor:
+      ham veri LLM'e giderse uyum ihlali kaçınılmaz.
+    </p>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="problem-icon">🏥</div>
+        <h3>HIPAA İhlali</h3>
+        <p>
+          Hasta adı, TC kimlik no veya teşhis kodu içeren bir prompt OpenAI/GPT'ye
+          giderse sağlık kuruluşu korunmasız kalır. OCR denetimleri anlık.
+        </p>
+        <div class="fine">$50.000 / ihlal</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">⚖️</div>
+        <h3>GDPR Madde 22</h3>
+        <p>
+          LLM kararlarında bireysel açıklama hakkı zorunlu. Denetlenemeyen AI
+          çıktısı = Madde 22 ihlali. AB Veri Koruma Otoritesi ceza kesmekte geç kalmaz.
+        </p>
+        <div class="fine">€20M veya %4 ciro</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">🇹🇷</div>
+        <h3>KVKK İhlali</h3>
+        <p>
+          TC kimlik no, telefon, adres gibi kişisel veri yurt dışı sunucuya aktarılamaz.
+          KVKK Kurulu para cezalarını artırmaya devam ediyor.
+        </p>
+        <div class="fine">₺4.000.000'a kadar</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ──────────────────────────────────── -->
+<section id="how">
+  <div class="container">
+    <div class="section-tag">NASIL ÇALIŞIR</div>
+    <h2>Üç Adım. Sıfır Uyum Riski.</h2>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">01</span>
+        <span class="step-icon">🔍</span>
+        <h3>TARA</h3>
+        <p>
+          Ham metni API'ye gönder. 18 desen eşzamanlı çalışır:
+          TC kimlik, telefon, IBAN, ad/soyad, adres, teşhis kodu ve daha fazlası.
+        </p>
+        <span class="step-arrow">→</span>
+      </div>
+      <div class="step">
+        <span class="step-num">02</span>
+        <span class="step-icon">🎭</span>
+        <h3>MASKELE</h3>
+        <p>
+          Tespit edilen PII/PHI otomatik maskelenir.
+          <code class="mono" style="font-size:12px; color:var(--red)">12345678901</code>
+          →
+          <code class="mono" style="font-size:12px; color:var(--green)">[TCKN]</code>.
+          Temiz metin LLM'e gider.
+        </p>
+        <span class="step-arrow">→</span>
+      </div>
+      <div class="step">
+        <span class="step-num">03</span>
+        <span class="step-icon">🔒</span>
+        <h3>MÜHÜRLE</h3>
+        <p>
+          Her tarama SHA-256 WORM receipt alır. Hash, timestamp ve ihlal sayısı
+          değiştirilemez zincire yazılır. Mahkemede delil niteliği taşır.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PLAYGROUND ────────────────────────────────────── -->
+<section id="playground">
+  <div class="container">
+    <div class="section-tag">PHI MOTORU</div>
+    <h2>Gerçek Zamanlı PHI Tarayıcı</h2>
+    <p class="section-desc">
+      Regex + AI NER (Transformers.js) hibrit motor. Tarayıcında çalışır,
+      verin sunucuya gitmez. Her tarama SHA-256 WORM mühürü alır.
+    </p>
+    <div id="nerProgress" style="display:none; margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono'; font-size:11px; color:var(--cyan); margin-bottom:6px;">
+        <span id="nerLabel">NER modeli yükleniyor...</span>
+        <span id="nerPct">0%</span>
+      </div>
+      <div style="height:4px; background:var(--border); border-radius:2px; overflow:hidden;">
+        <div id="nerBar" style="height:100%; width:0%; background:var(--cyan); border-radius:2px; transition:width 0.3s;"></div>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+      <div class="api-status-bar">
+        <div class="api-dot" id="apiDot"></div>
+        <span id="apiLabel">API bağlantısı kontrol ediliyor...</span>
+      </div>
+      <button class="btn-copy" onclick="loadSample()">Örnek metin yükle</button>
+    </div>
+
+    <div class="playground-wrap">
+      <!-- INPUT -->
+      <div class="pane">
+        <div class="pane-header">
+          <span>GİRİŞ — Ham Metin</span>
+          <div class="pane-dot"></div>
+        </div>
+        <textarea id="inputText" placeholder="Kişisel veri içeren metni buraya yaz...
+&#10;Örnek: 'Hasta Ahmet Yılmaz (TC: 12345678901) dün saat 14:00'de başvurdu. Tel: 05321234567'"
+        ></textarea>
+        <div class="scan-controls">
+          <button class="btn-scan" id="scanBtn" onclick="runScan()">▶ TARA</button>
+          <span id="scanBadge" class="badge-count" style="display:none"></span>
+          <span id="safeBadge" class="badge-safe" style="display:none"></span>
+        </div>
+      </div>
+
+      <!-- OUTPUT -->
+      <div class="pane">
+        <div class="pane-header">
+          <span>ÇIKIŞ — Maskelenmiş Metin</span>
+          <div class="pane-dot" style="background:var(--gold)"></div>
+        </div>
+        <div class="output-box" id="outputBox">
+          <span style="color:var(--muted); font-size:13px;">Tarama sonucu burada görünecek…</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI KARAR LOGU (WORM RECEIPT) -->
+    <div class="worm-box" id="wormBox" style="display:none">
+      <div class="worm-title">🔒 YAPAY ZEKA KARAR LOGU — AI Act Uyumlu Denetim Kaydı</div>
+
+      <div style="display:grid; grid-template-columns:140px 1fr; gap:6px 12px; font-family:'JetBrains Mono'; font-size:12px;">
+
+        <span class="worm-key">İşlem Kimliği</span>
+        <span class="worm-val hash"><span id="wHash"></span> <span class="hash-copy" onclick="copyHash('wHash')" title="Kopyala">📋</span></span>
+
+        <span class="worm-key">Zaman Damgası</span>
+        <span class="worm-val" id="wTime"></span>
+
+        <span class="worm-key">Girdi Hash</span>
+        <span class="worm-val hash"><span id="iHash"></span> <span class="hash-copy" onclick="copyHash('iHash')" title="Kopyala">📋</span></span>
+
+        <span class="worm-key">Model Bilgisi</span>
+        <span class="worm-val" id="wEngine">—</span>
+
+        <span class="worm-key">Alınan Karar</span>
+        <span class="worm-val" id="wVerdict" style="font-weight:700;">—</span>
+
+        <span class="worm-key">Güven Skoru</span>
+        <span class="worm-val" id="wConf">—</span>
+
+        <span class="worm-key">Karar Gerekçesi</span>
+        <span class="worm-val" id="wViol"></span>
+
+        <span class="worm-key">İnsan Onayı</span>
+        <span class="worm-val" id="wHitl" style="color:var(--gold);">Bekleniyor</span>
+
+        <span class="worm-key">Risk / Etik</span>
+        <span class="worm-val" id="wRisk">—</span>
+
+        <span class="worm-key">Yargı Bölgesi</span>
+        <span class="worm-val" id="wJuris">GDPR · HIPAA · KVKK</span>
+
+        <span class="worm-key">Durum</span>
+        <span class="worm-val safe" id="wStatus">SEALED</span>
+      </div>
+
+      <div class="phi-violations" id="phiTags" style="margin-top:12px;"></div>
+
+      <div style="margin-top:14px; padding-top:10px; border-top:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn-copy" onclick="approveHITL()" id="hitlBtn">✓ İnsan Onayı Ver</button>
+        <button class="btn-copy" onclick="rejectHITL()" id="hitlRejectBtn">✗ Reddet</button>
+        <button class="btn-copy" onclick="exportJSON()">📄 JSON İndir</button>
+        <button class="btn-copy" onclick="exportPDF()">🖨️ PDF Yazdır</button>
+      </div>
+    </div>
+
+    <!-- SCAN HISTORY -->
+    <div class="worm-box" id="historyBox" style="margin-top:16px; border-color:rgba(0,212,255,0.2);">
+      <div class="worm-title" style="color:var(--cyan); cursor:pointer;" onclick="toggleHistory()">
+        📋 TARAMA GEÇMİŞİ — <span id="histCount">0</span> kayıt
+        <span style="float:right; font-size:14px;" id="histArrow">▸</span>
+      </div>
+      <div id="histList" style="display:none; max-height:300px; overflow-y:auto;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ROI ──────────────────────────────────────────── -->
+<section id="roi">
+  <div class="container">
+    <div class="section-tag">ROI HESAPLAYICI</div>
+    <h2>Kendin Yap vs. Veritas Mechanic</h2>
+    <p class="section-desc">
+      Kendi PHI pipeline'ını inşa etmek ne kadara mal olur?
+      Rakamları gir ve farkı gör.
+    </p>
+    <div class="roi-grid">
+      <div class="roi-inputs">
+        <h3>SİSTEM PARAMETRELERİ</h3>
+        <div class="roi-field">
+          <label>Mühendis sayısı</label>
+          <input type="number" id="r1" value="2" min="1" oninput="calcRoi()">
+        </div>
+        <div class="roi-field">
+          <label>Aylık mühendis maliyeti ($)</label>
+          <input type="number" id="r2" value="5000" min="1000" oninput="calcRoi()">
+        </div>
+        <div class="roi-field">
+          <label>Geliştirme süresi (ay)</label>
+          <input type="number" id="r3" value="6" min="1" oninput="calcRoi()">
+        </div>
+        <div class="roi-field">
+          <label>Hukuk / Uyum danışmanlık ($)</label>
+          <input type="number" id="r4" value="15000" min="0" oninput="calcRoi()">
+        </div>
+        <div class="roi-field">
+          <label>Aylık sorgu hacmi (bin)</label>
+          <input type="number" id="r5" value="50" min="1" oninput="calcRoi()">
+        </div>
+      </div>
+
+      <div class="roi-results">
+        <div>
+          <div style="font-family:'Orbitron'; font-size:12px; color:var(--muted); margin-bottom:20px; letter-spacing:0.08em;">YILLIK MALİYET KARŞILAŞTIRMASI</div>
+          <div class="roi-row">
+            <span class="roi-row-label">Kendin Yap (1 yıl)</span>
+            <span class="roi-row-val bad" id="buildCost">$--</span>
+          </div>
+          <div class="roi-row">
+            <span class="roi-row-label">Altyapı / Bakım (yıllık)</span>
+            <span class="roi-row-val bad" id="infraCost">$--</span>
+          </div>
+          <div class="roi-row" style="border-bottom: 2px solid var(--border);">
+            <span class="roi-row-label" style="font-weight:700; color:var(--text);">Toplam (İnşa Et)</span>
+            <span class="roi-row-val bad" id="totalBuild" style="font-size:20px;">$--</span>
+          </div>
+          <div class="roi-row" style="margin-top:8px;">
+            <span class="roi-row-label" style="color:var(--green);">Veritas Mechanic (1 yıl)</span>
+            <span class="roi-row-val good" id="vmCost">$--</span>
+          </div>
+        </div>
+        <div class="roi-savings">
+          <div class="roi-savings-label">TASARRUF EDİLEN TUTAR</div>
+          <div class="roi-savings-amount" id="savings">$--</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:8px;">
+            + <span id="timeSave">--</span> aylık geliştirme süresinden kurtulursun
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SDK ──────────────────────────────────────────── -->
+<section id="sdk">
+  <div class="container">
+    <div class="section-tag">ENTEGRASYON</div>
+    <h2>3 Satırda Entegre Et</h2>
+    <p class="section-desc">
+      Mevcut LLM pipeline'ına Veritas Mechanic'i eklemek dakikalar alır.
+    </p>
+    <div class="code-block">
+      <div class="sdk-tabs">
+        <button class="sdk-tab active" onclick="switchTab('py', this)">Python</button>
+        <button class="sdk-tab" onclick="switchTab('node', this)">Node.js</button>
+        <button class="sdk-tab" onclick="switchTab('curl', this)">cURL</button>
+      </div>
+
+      <!-- PYTHON -->
+      <div class="sdk-content active" id="tab-py">
+        <div class="install-bar">
+          <code>pip install feam-audit-sdk</code>
+          <button class="btn-copy" onclick="copyCode('pip install feam-audit-sdk')">Kopyala</button>
+        </div>
+        <pre><span class="kw">from</span> <span class="var">feam_audit</span> <span class="kw">import</span> <span class="fn">VeritasClient</span>
+<span class="kw">import</span> <span class="var">os</span>
+
+<span class="var">client</span> = <span class="fn">VeritasClient</span>(api_key=os.getenv(<span class="str">"VERITAS_API_KEY"</span>))
+
+<span class="cm"># LLM'e göndermeden önce tara</span>
+<span class="var">user_prompt</span> = <span class="str">"Hasta Ahmet Yılmaz (TC: 12345678901) dünkü tahlil sonuçları..."</span>
+
+<span class="var">result</span> = <span class="var">client</span>.scan(
+    text=<span class="var">user_prompt</span>,
+    jurisdiction=<span class="str">"KVKK"</span>,
+    redact_mode=<span class="str">"mask"</span>   <span class="cm"># none | mask | replace | block</span>
+)
+
+<span class="kw">if</span> <span class="var">result</span>.is_safe:
+    <span class="cm"># Temizlenmiş metin ile LLM çağrısı yap</span>
+    <span class="var">llm_output</span> = <span class="fn">my_llm</span>.generate(<span class="var">result</span>.clean_text)
+<span class="kw">else</span>:
+    <span class="fn">print</span>(<span class="str">f"İhlaller: {result.violations}"</span>)
+
+<span class="cm"># Denetlenebilir WORM mühür</span>
+<span class="fn">print</span>(<span class="str">f"Audit Hash: {result.worm_receipt}"</span>)</pre>
+      </div>
+
+      <!-- NODE -->
+      <div class="sdk-content" id="tab-node">
+        <div class="install-bar">
+          <code>npm install @feam/audit-sdk</code>
+          <button class="btn-copy" onclick="copyCode('npm install @feam/audit-sdk')">Kopyala</button>
+        </div>
+        <pre><span class="kw">import</span> { <span class="fn">VeritasClient</span> } <span class="kw">from</span> <span class="str">'@feam/audit-sdk'</span>
+
+<span class="kw">const</span> <span class="var">client</span> = <span class="kw">new</span> <span class="fn">VeritasClient</span>({ apiKey: process.env.<span class="var">VERITAS_API_KEY</span> })
+
+<span class="kw">async function</span> <span class="fn">processPrompt</span>(<span class="var">userPrompt</span>) {
+  <span class="kw">const</span> <span class="var">result</span> = <span class="kw">await</span> <span class="var">client</span>.<span class="fn">scan</span>({
+    text: <span class="var">userPrompt</span>,
+    jurisdiction: <span class="str">'GDPR'</span>,
+    redactMode: <span class="str">'mask'</span>
+  })
+
+  <span class="kw">if</span> (<span class="var">result</span>.isSafe) {
+    <span class="kw">return await</span> <span class="var">openAi</span>.<span class="fn">complete</span>(<span class="var">result</span>.cleanText)
+  }
+
+  <span class="cm">// WORM mühürü sakla</span>
+  <span class="var">console</span>.<span class="fn">log</span>(<span class="str">`Audit: <span class="var">${result.wormReceipt}</span>`</span>)
+}</pre>
+      </div>
+
+      <!-- CURL -->
+      <div class="sdk-content" id="tab-curl">
+        <div class="install-bar">
+          <code># Kurulum gerektirmez</code>
+          <button class="btn-copy" onclick="copyCode('curl -X POST https://api.veritas.feam.co/v1/scan -H \"Authorization: Bearer sk_YOUR_KEY\" -H \"Content-Type: application/json\" -d \'{\"text\": \"Ahmet Yılmaz TC: 12345678901\", \"jurisdiction\": \"KVKK\"}\'')">Kopyala</button>
+        </div>
+        <pre>curl -X POST https://api.veritas.feam.co/v1/scan \
+  -H <span class="str">"Authorization: Bearer sk_YOUR_KEY"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{
+    "text": "Ahmet Yılmaz TC: 12345678901",
+    "jurisdiction": "KVKK",
+    "redact_mode": "mask"
+  }'</span>
+
+<span class="cm"># Yanıt:</span>
+{
+  <span class="str">"is_safe"</span>: <span class="kw">false</span>,
+  <span class="str">"clean_text"</span>: <span class="str">"[AD_SOYAD] TC: [TCKN]"</span>,
+  <span class="str">"violations"</span>: [<span class="str">"TCKN"</span>, <span class="str">"NAME"</span>],
+  <span class="str">"violation_count"</span>: <span class="num">2</span>,
+  <span class="str">"worm_receipt"</span>: <span class="str">"7a3f9b2c4fe2dd..."</span>,
+  <span class="str">"latency_ms"</span>: <span class="num">1.4</span>
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── API REF ──────────────────────────────────────── -->
+<section id="api">
+  <div class="container">
+    <div class="section-tag">REST API</div>
+    <h2>API Referansı</h2>
+    <p class="section-desc">Tüm endpoint'ler JSON döner. Auth: Bearer token.</p>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggleEndpoint(this)">
+        <span class="method post">POST</span>
+        <span class="path">/v1/scan</span>
+        <span class="endpoint-desc">PHI Tara ve Maskele</span>
+      </div>
+      <div class="endpoint-body">
+        <p>Gönderilen metin üzerinde HIPAA/GDPR/KVKK uyarınca 18 farklı PII/PHI
+        desenini &lt;2ms içinde tarar, maskeler ve işlemi WORM zincirine yazar.</p>
+        <table>
+          <thead><tr><th>Parametre</th><th>Tip</th><th>Açıklama</th></tr></thead>
+          <tbody>
+            <tr><td>text *</td><td>string</td><td>Taranacak ham metin (maks 50KB)</td></tr>
+            <tr><td>jurisdiction</td><td>string</td><td>GDPR · HIPAA · KVKK · ALL (varsayılan: ALL)</td></tr>
+            <tr><td>redact_mode</td><td>enum</td><td>none · mask · replace · block (varsayılan: mask)</td></tr>
+            <tr><td>context_id</td><td>string</td><td>Kendi sisteminizin oturum ID'si (mahkeme eşleştirme)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggleEndpoint(this)">
+        <span class="method get">GET</span>
+        <span class="path">/v1/ledger/{worm_hash}</span>
+        <span class="endpoint-desc">WORM Kaydı Sorgula</span>
+      </div>
+      <div class="endpoint-body">
+        <p>Daha önce yapılmış bir taramanın SHA-256 mühürlü kriptografik kanıtını döner.
+        Bu endpoint denetçiler ve yasal merciler için şeffaf erişime açıktır.</p>
+        <table>
+          <thead><tr><th>Parametre</th><th>Tip</th><th>Açıklama</th></tr></thead>
+          <tbody>
+            <tr><td>worm_hash *</td><td>string</td><td>WORM receipt'ten gelen SHA-256 hash</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggleEndpoint(this)">
+        <span class="method post">POST</span>
+        <span class="path">/v1/verify</span>
+        <span class="endpoint-desc">İçerik Doğrula</span>
+      </div>
+      <div class="endpoint-body">
+        <p>Bir metin veya hash'in zincirde mevcut olup olmadığını doğrular.
+        Denetim ve uyumluluk raporlaması için kullanılır.</p>
+        <table>
+          <thead><tr><th>Parametre</th><th>Tip</th><th>Açıklama</th></tr></thead>
+          <tbody>
+            <tr><td>content *</td><td>string</td><td>Doğrulanacak metin veya hash</td></tr>
+            <tr><td>claim</td><td>string</td><td>exists_in_chain · was_clean · was_scanned</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRICING ──────────────────────────────────────── -->
+<section id="pricing">
+  <div class="container">
+    <div class="section-tag">FİYATLANDIRMA</div>
+    <h2>Kullandıkça Öde. Sıfır Başlangıç Maliyeti.</h2>
+    <p class="section-desc">Kredi kartı olmadan başla. İlk 10.000 sorgu bizden.</p>
+    <div class="price-grid">
+
+      <div class="price-card">
+        <div class="price-tag">BAŞLANGIÇ</div>
+        <div class="price-name">Free</div>
+        <div class="price-amount">$0 <span>/ ay</span></div>
+        <div class="price-desc">
+          10.000 sorgu/ay dahil. WORM receipts. Temel destek.
+          Küçük projeler ve PoC için ideal.
+        </div>
+        <a href="#cta" class="price-cta">Ücretsiz Başla</a>
+      </div>
+
+      <div class="price-card">
+        <div class="price-tag">GELİŞTİRİCİ</div>
+        <div class="price-name">Pay-as-you-go</div>
+        <div class="price-amount">$0.012 <span>/ sorgu</span></div>
+        <div class="price-desc">
+          10K üzeri her sorgu için. Tüm yargı bölgeleri. WORM zinciri.
+          E-posta desteği. Fatura her ay.
+        </div>
+        <a href="#cta" class="price-cta">API Key Al</a>
+      </div>
+
+      <div class="price-card featured">
+        <div class="price-tag">EN POPÜLER</div>
+        <div class="price-name">Professional</div>
+        <div class="price-amount">$299 <span>/ ay</span></div>
+        <div class="price-desc">
+          500K sorgu dahil. SLA %99.9. Öncelikli destek.
+          Özel yargı bölgesi konfigürasyonu. Aylık uyum raporu.
+        </div>
+        <a href="#cta" class="price-cta">Teklif Al</a>
+      </div>
+
+      <div class="price-card">
+        <div class="price-tag">KURUMSAL</div>
+        <div class="price-name">Enterprise</div>
+        <div class="price-amount">Özel <span>fiyat</span></div>
+        <div class="price-desc">
+          Sınırsız sorgu. On-premise deployment. Özel WORM node.
+          Hukuki sorumluluk paylaşımı. Çeyreklik denetim raporu.
+        </div>
+        <a href="mailto:erdem@feam.co?subject=Veritas%20Mechanic%20Enterprise" class="price-cta">İletişime Geç</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ──────────────────────────────────────────── -->
+<section id="cta">
+  <div class="container">
+    <div class="section-tag">BAŞLA</div>
+    <h2>Mühendislerini Koru.<br>Kodlamaya Devam Et.</h2>
+    <p>İlk 10.000 sorgunuz ücretsiz. Kredi kartı gerektirmez.</p>
+    <div class="hero-actions" style="justify-content:center;">
+      <a href="mailto:erdem@feam.co?subject=Veritas%20Mechanic%20API%20Key" class="btn-primary">
+        API KEY İSTEYİN
+      </a>
+      <a href="https://feam.co/docs" class="btn-secondary">Teknik Döküman</a>
+    </div>
+    <p style="margin-top:32px; font-size:13px; color:var(--muted);">
+      <span class="mono">api.veritas.feam.co</span> &nbsp;·&nbsp; FEAM OS v10 tabanlı &nbsp;·&nbsp;
+      Frankfurt EU &nbsp;·&nbsp; AGPLv3 + Ticari Çift Lisans
+    </p>
+  </div>
+</section>
+
+<!-- ── FOOTER ──────────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <p>
+      Veritas Mechanic &copy; 2026 <a href="https://feam.co">FEAM.co</a> — 5E Yapı Sistemleri Yönetimi &nbsp;|&nbsp;
+      <a href="#">Gizlilik</a> &nbsp;|&nbsp; <a href="#">Hizmet Şartları</a>
+    </p>
+    <p style="margin-top:8px; font-size:12px; color:var(--muted);">
+      "Güven, kontrole mâni değildir. Güven, kontrolün şeffaflığından doğar."
+    </p>
+  </div>
+</footer>
+
+<div class="toast" id="toast">Panoya kopyalandı</div>
+
+<script type="module">
+// ── TRANSFORMERS.JS NER ─────────────────────────────────
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+env.allowLocalModels = false;
+
+let nerPipeline = null;
+let nerLoading = false;
+let nerReady = false;
+
+async function loadNER() {
+  if (nerReady || nerLoading) return;
+  nerLoading = true;
+  const prog = document.getElementById('nerProgress');
+  const bar  = document.getElementById('nerBar');
+  const pct  = document.getElementById('nerPct');
+  const lbl  = document.getElementById('nerLabel');
+  prog.style.display = '';
+  try {
+    nerPipeline = await pipeline('token-classification',
+      'Xenova/bert-base-multilingual-cased-ner-hrl',
+      { progress_callback: (p) => {
+          if (p.status === 'progress' && p.total) {
+            const v = Math.round((p.loaded / p.total) * 100);
+            bar.style.width = v + '%'; pct.textContent = v + '%';
+          }
+          if (p.status === 'done') { bar.style.width = '100%'; pct.textContent = '100%'; }
+        }
+      }
+    );
+    nerReady = true;
+    lbl.textContent = 'NER: Hazır (bert-multilingual-ner)';
+    lbl.style.color = 'var(--green)';
+    bar.style.background = 'var(--green)';
+  } catch (e) {
+    lbl.textContent = 'NER yüklenemedi — Regex modu aktif';
+    lbl.style.color = 'var(--gold)';
+    console.warn('NER load failed:', e);
+  }
+  nerLoading = false;
+}
+
+async function runNER(text) {
+  if (!nerReady || !nerPipeline) return [];
+  try {
+    const results = await nerPipeline(text);
+    const nerFound = [];
+    for (const r of results) {
+      const label = r.entity.replace('B-','').replace('I-','');
+      if (['PER','LOC','ORG'].includes(label) && r.score > 0.7) {
+        nerFound.push({ word: r.word, label, score: r.score, start: r.start, end: r.end });
+      }
+    }
+    return nerFound;
+  } catch { return []; }
+}
+
+// ── PHI PATTERNS ────────────────────────────────────────
+// Risk ağırlıkları (güven skoru hesaplaması için)
+const RISK_WEIGHT = { TCKN: 20, PHONE: 8, EMAIL: 10, IBAN: 18, CREDIT: 20, DATE_TR: 3, NAME: 12, ADDR: 10, PLATE: 6, NER_PER: 10, NER_LOC: 5, NER_ORG: 5 };
+
+const PHI_PATTERNS = [
+  { key: 'TCKN',    re: /\b[1-9]\d{10}\b/g,                     label: 'TC Kimlik No',    tag: '[TCKN]' },
+  { key: 'PHONE',   re: /(\+90[\s-]?)?0?[5][0-9]{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}/g, label: 'Telefon', tag: '[TELEFON]' },
+  { key: 'EMAIL',   re: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, label: 'E-posta', tag: '[EMAIL]' },
+  { key: 'IBAN',    re: /TR\d{2}[\s]?\d{4}[\s]?\d{4}[\s]?\d{4}[\s]?\d{4}[\s]?\d{4}/gi,  label: 'IBAN',    tag: '[IBAN]' },
+  { key: 'CREDIT',  re: /\b(?:\d[ -]?){13,16}\b/g,              label: 'Kart No',         tag: '[KART_NO]', luhn: true },
+  { key: 'DATE_TR', re: /\b(0?[1-9]|[12]\d|3[01])[.\/-](0?[1-9]|1[0-2])[.\/-](\d{4}|\d{2})\b/g, label: 'Tarih', tag: '[TARİH]' },
+  { key: 'NAME',    re: /\b([A-ZÇĞİÖŞÜ][a-zçğışöşü]{2,}\s+[A-ZÇĞİÖŞÜ][a-zçğışöşü]{2,}(?:\s+[A-ZÇĞİÖŞÜ][a-zçğışöşü]{2,})?)\b/g, label: 'Ad Soyad', tag: '[AD_SOYAD]' },
+  { key: 'ADDR',    re: /\b\w+\s+(Mah\.|Cad\.|Sok\.|Blv\.|Cd\.|Sk\.)\s+[^\n,]+/gi,      label: 'Adres',   tag: '[ADRES]' },
+  { key: 'PLATE',   re: /\b\d{2}\s*[A-Z]{1,3}\s*\d{2,5}\b/g,   label: 'Plaka',           tag: '[PLAKA]' },
+];
+
+// Luhn algoritması — kredi kartı doğrulama
+function luhnCheck(num) {
+  const digits = num.replace(/\D/g, '');
+  if (digits.length < 13 || digits.length > 19) return false;
+  let sum = 0, alt = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let n = parseInt(digits[i], 10);
+    if (alt) { n *= 2; if (n > 9) n -= 9; }
+    sum += n; alt = !alt;
+  }
+  return sum % 10 === 0;
+}
+
+const SAMPLES = [
+  `Hasta Ahmet Yılmaz (TC: 12345678901) 05.03.2024 tarihinde başvurdu.
+Tel: 0532 123 45 67 | E-posta: ahmet.yilmaz@example.com
+Teşhis: Tip 2 Diyabet. IBAN: TR12 0006 2001 2345 6789 0123 45
+Adres: Bahçelievler Mah. Atatürk Cad. No:12 Kat:3 Daire:7`,
+
+  `Müvekkil Zeynep Kaya (T.C.: 98765432109), 12/11/2023 tarihli sözleşme ile
+vekalet verdi. Araç plakası: 34 ABC 1234. İletişim: zeynep@firma.com.tr, +90 555 987 6543.
+Hesap: TR98 0000 0000 0000 0000 0000 00`,
+
+  `Çalışan: Mehmet Öztürk | Personel No: 3847 | TC: 55544433322
+İşe Başlangıç: 01.07.2022 | Departman: Bilgi İşlem
+Maaş IBAN: TR33 0000 1234 5678 9012 3456 78 | Tel: 0216 555 44 33`
+];
+
+let sampleIdx = 0;
+
+function loadSample() {
+  document.getElementById('inputText').value = SAMPLES[sampleIdx % SAMPLES.length];
+  sampleIdx++;
+}
+
+// ── SHA-256 ─────────────────────────────────────────────
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── IndexedDB WORM STORE ────────────────────────────────
+let wormDB = null;
+const WORM_DB = 'VeritasWORM';
+const WORM_STORE = 'scans';
+
+function openWormDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(WORM_DB, 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(WORM_STORE)) {
+        const store = db.createObjectStore(WORM_STORE, { keyPath: 'worm_hash' });
+        store.createIndex('timestamp', 'timestamp', { unique: false });
+        store.createIndex('synced', 'synced', { unique: false });
+      }
+    };
+    req.onsuccess = e => { wormDB = e.target.result; resolve(wormDB); };
+    req.onerror = e => reject(e);
+  });
+}
+
+async function saveToWORM(record) {
+  if (!wormDB) await openWormDB();
+  return new Promise((resolve, reject) => {
+    const tx = wormDB.transaction(WORM_STORE, 'readwrite');
+    tx.objectStore(WORM_STORE).put(record);
+    tx.oncomplete = () => resolve();
+    tx.onerror = e => reject(e);
+  });
+}
+
+async function getAllScans() {
+  if (!wormDB) await openWormDB();
+  return new Promise((resolve, reject) => {
+    const tx = wormDB.transaction(WORM_STORE, 'readonly');
+    const req = tx.objectStore(WORM_STORE).index('timestamp').getAll();
+    req.onsuccess = () => resolve(req.result.reverse());
+    req.onerror = e => reject(e);
+  });
+}
+
+async function getUnsyncedScans() {
+  if (!wormDB) await openWormDB();
+  return new Promise((resolve, reject) => {
+    const tx = wormDB.transaction(WORM_STORE, 'readonly');
+    const idx = tx.objectStore(WORM_STORE).index('synced');
+    const req = idx.getAll(0);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = e => reject(e);
+  });
+}
+
+async function markSynced(worm_hash) {
+  if (!wormDB) return;
+  const tx = wormDB.transaction(WORM_STORE, 'readwrite');
+  const store = tx.objectStore(WORM_STORE);
+  const req = store.get(worm_hash);
+  req.onsuccess = () => {
+    const rec = req.result;
+    if (rec) { rec.synced = 1; store.put(rec); }
+  };
+}
+
+// ── API SYNC ────────────────────────────────────────────
+async function syncToAPI(record) {
+  try {
+    const resp = await fetch('http://localhost:8000/api/v1/copilot/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `[VERITAS_SCAN] worm_hash=${record.worm_hash} violations=${record.violation_count} timestamp=${record.timestamp}`,
+        session_id: 'veritas-mechanic'
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (resp.ok) { await markSynced(record.worm_hash); return true; }
+  } catch {}
+  return false;
+}
+
+async function syncAllPending() {
+  const apiOnline = document.getElementById('apiDot').classList.contains('live');
+  if (!apiOnline) return;
+  const pending = await getUnsyncedScans();
+  for (const rec of pending) { await syncToAPI(rec); }
+}
+
+// ── HISTORY UI ──────────────────────────────────────────
+function toggleHistory() {
+  const list = document.getElementById('histList');
+  const arrow = document.getElementById('histArrow');
+  if (list.style.display === 'none') {
+    list.style.display = ''; arrow.textContent = '▾';
+    renderHistory();
+  } else {
+    list.style.display = 'none'; arrow.textContent = '▸';
+  }
+}
+
+async function renderHistory() {
+  const scans = await getAllScans();
+  const el = document.getElementById('histList');
+  document.getElementById('histCount').textContent = scans.length;
+  if (scans.length === 0) {
+    el.innerHTML = '<div style="padding:12px; color:var(--muted); font-size:12px;">Henüz tarama yok</div>';
+    return;
+  }
+  el.innerHTML = scans.map(s => {
+    const syncIcon = s.synced ? '☁️' : '💾';
+    const violColor = s.violation_count > 0 ? 'var(--red)' : 'var(--green)';
+    const t = new Date(s.timestamp).toLocaleString('tr-TR');
+    return `<div style="padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; font-family:'JetBrains Mono';">
+      <div style="display:flex; justify-content:space-between;">
+        <span style="color:var(--gold);">${s.worm_hash.slice(0,16)}…</span>
+        <span>${syncIcon} ${t}</span>
+      </div>
+      <div style="margin-top:4px;">
+        <span style="color:${violColor};">${s.violation_count} ihlal</span>
+        <span style="color:var(--muted); margin-left:12px;">${s.engine}</span>
+        <span style="margin-left:12px; color:${s.hitl==='approved' ? 'var(--green)' : s.hitl==='rejected' ? 'var(--red)' : 'var(--gold)'}">${s.hitl==='approved' ? '✓ Onaylı' : s.hitl==='rejected' ? '✗ Red' : '⏳ Beklemede'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── SCAN LOGIC (Hybrid: Regex + NER) ────────────────────
+async function runScan() {
+  const text = document.getElementById('inputText').value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true; btn.textContent = '⟳ TARANIYOR...';
+
+  // 1) Regex-based PHI detection (CREDIT ile Luhn kontrolü)
+  let masked = text;
+  const found = [];
+  const matchedSpans = []; // double-count önleme
+
+  for (const p of PHI_PATTERNS) {
+    const matches = [...text.matchAll(p.re)];
+    const validMatches = [];
+    for (const m of matches) {
+      // CREDIT: Luhn doğrulaması + daha önce eşleşen alanla örtüşme kontrolü
+      if (p.luhn) {
+        if (!luhnCheck(m[0])) continue;
+        const overlap = matchedSpans.some(s => m.index >= s[0] && m.index < s[1]);
+        if (overlap) continue;
+      }
+      validMatches.push(m);
+      matchedSpans.push([m.index, m.index + m[0].length]);
+    }
+    if (validMatches.length > 0) {
+      found.push({ key: p.key, label: p.label, count: validMatches.length, source: 'regex' });
+      masked = masked.replace(p.re, (match, ...args) => {
+        if (p.luhn && !luhnCheck(match)) return match;
+        return `<span class="masked">${p.tag}</span>`;
+      });
+    }
+  }
+
+  // 2) NER-based detection — subword birleştirme (B-PER + I-PER → tek isim)
+  const nerResults = await runNER(text);
+  const mergedEntities = [];
+  let current = null;
+  for (const nr of nerResults) {
+    const prefix = nr.entity.startsWith('B-') ? 'B' : nr.entity.startsWith('I-') ? 'I' : 'O';
+    const label = nr.entity.replace(/^[BI]-/, '');
+    if (prefix === 'B' || (prefix === 'I' && (!current || current.label !== label))) {
+      if (current) mergedEntities.push(current);
+      current = { word: nr.word.replace(/^##/, ''), label, score: nr.score, start: nr.start, end: nr.end };
+    } else if (prefix === 'I' && current && current.label === label) {
+      const part = nr.word.replace(/^##/, '');
+      current.word += nr.word.startsWith('##') ? part : ' ' + part;
+      current.end = nr.end;
+      current.score = Math.min(current.score, nr.score);
+    }
+  }
+  if (current) mergedEntities.push(current);
+
+  const nerNames = new Set();
+  for (const nr of mergedEntities) {
+    if (nr.word.length < 2 || nr.score < 0.7) continue;
+    if (!['PER','LOC','ORG'].includes(nr.label)) continue;
+    const tag = nr.label === 'PER' ? '[KİŞİ_NER]' : nr.label === 'LOC' ? '[KONUM_NER]' : '[KURUM_NER]';
+    const key = nr.word.toLowerCase();
+    if (!nerNames.has(key)) {
+      nerNames.add(key);
+      found.push({ key: `NER_${nr.label}`, label: `${nr.label} (AI: ${nr.word})`, count: 1, source: 'ner' });
+      const escClean = nr.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      masked = masked.replace(new RegExp(escClean, 'gi'), `<span class="masked">${tag}</span>`);
+    }
+  }
+
+  // Render masked output
+  const outBox = document.getElementById('outputBox');
+  const engineLabel = nerReady ? 'Regex + AI NER' : 'Regex';
+  if (found.length === 0) {
+    outBox.innerHTML = `<span class="safe">${text.replace(/</g,'&lt;')}</span>
+      <br><br><span style="color:var(--green); font-size:12px; font-family:'JetBrains Mono';">
+      ✓ PHI tespit edilmedi (${engineLabel}) — metin LLM'e güvenle gönderilebilir</span>`;
+  } else {
+    outBox.innerHTML = masked.replace(/\n/g, '<br>');
+  }
+
+  // Badges
+  const scanBadge = document.getElementById('scanBadge');
+  const safeBadge = document.getElementById('safeBadge');
+  const totalCount = found.reduce((s,f) => s + f.count, 0);
+  if (found.length > 0) {
+    scanBadge.textContent = `${totalCount} ihlal (${engineLabel})`;
+    scanBadge.style.display = '';
+    safeBadge.style.display = 'none';
+  } else {
+    safeBadge.textContent = `✓ TEMİZ (${engineLabel})`;
+    safeBadge.style.display = '';
+    scanBadge.style.display = 'none';
+  }
+
+  // YAPAY ZEKA KARAR LOGU — gerçek SHA-256
+  const ts = new Date().toISOString();
+  const inputHash = await sha256(text + ts);
+  const wormHash  = await sha256(inputHash + JSON.stringify(found));
+  // Ağırlıklı güven skoru: yüksek riskli pattern = düşük güven
+  const riskSum = found.reduce((s, f) => s + (RISK_WEIGHT[f.key] || 5) * f.count, 0);
+  const confScore = found.length === 0 ? 100 : Math.max(5, Math.round(100 - Math.min(95, riskSum)));
+  const verdict   = found.length === 0 ? 'GÜVENLİ — LLM\'e gönderilebilir' : `MASKELEME GEREKLİ — ${totalCount} ihlal tespit edildi`;
+  const riskText  = found.length === 0
+    ? 'Etik risk yok — kişisel veri tespit edilmedi'
+    : `${found.filter(f=>f.source==='regex').length} yapısal + ${found.filter(f=>f.source==='ner').length} NER ihlali. Maskeleme uygulandı.`;
+
+  // Karar logu alanlarını doldur
+  document.getElementById('wHash').textContent    = wormHash;
+  document.getElementById('iHash').textContent    = inputHash;
+  document.getElementById('wTime').textContent    = ts;
+  document.getElementById('wEngine').textContent  = `Veritas Mechanic v1.0 / ${engineLabel}`;
+  document.getElementById('wVerdict').textContent = verdict;
+  document.getElementById('wVerdict').style.color = found.length === 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('wConf').textContent    = `%${confScore} Güven Oranı`;
+  document.getElementById('wViol').textContent    = found.length > 0
+    ? found.map(f => `${f.label} (${f.count})`).join(' · ')
+    : 'Kişisel veri tespit edilmedi';
+  document.getElementById('wHitl').textContent    = 'Bekleniyor';
+  document.getElementById('wHitl').style.color    = 'var(--gold)';
+  document.getElementById('wRisk').textContent    = riskText;
+  document.getElementById('wStatus').textContent  = 'SEALED';
+
+  const tagsEl = document.getElementById('phiTags');
+  tagsEl.innerHTML = found.map(f => {
+    const cls = f.source === 'ner' ? 'phi-tag" style="border-color:var(--cyan);color:var(--cyan)' : 'phi-tag';
+    return `<span class="${cls}">${f.key}</span>`;
+  }).join('');
+
+  document.getElementById('wormBox').style.display = '';
+
+  // Son karar logunu global'de tut (HITL + export için)
+  window._lastScanLog = {
+    islem_id:       wormHash,
+    zaman_damgasi:  ts,
+    girdi_hash:     inputHash,
+    model:          `Veritas Mechanic v1.0 / ${engineLabel}`,
+    karar:          verdict,
+    guven_skoru:    confScore,
+    gerekce:        found.map(f => `${f.label} (${f.count})`),
+    insan_onayi:    'Bekleniyor',
+    risk_etik:      riskText,
+    yargi_bolgesi:  'GDPR · HIPAA · KVKK',
+    durum:          'SEALED',
+    violations:     found.map(f => f.key),
+    violation_count: totalCount,
+  };
+
+  // ── 3) IndexedDB WORM kayıt + API sync ────────────────
+  const scanRecord = {
+    worm_hash:       wormHash,
+    input_hash:      inputHash,
+    timestamp:       ts,
+    violation_count: totalCount,
+    violations:      found.map(f => f.key),
+    engine:          engineLabel,
+    verdict:         verdict,
+    confidence:      confScore,
+    hitl:            'pending',
+    jurisdiction:    'GDPR · HIPAA · KVKK',
+    synced:          0,
+  };
+  await saveToWORM(scanRecord);
+  document.getElementById('histCount').textContent = (await getAllScans()).length;
+
+  // Arka planda API'ye sync
+  syncToAPI(scanRecord);
+
+  btn.disabled = false; btn.textContent = '▶ TARA';
+}
+
+// ── HITL (Human-in-the-Loop) ────────────────────────────
+function approveHITL() {
+  if (!window._lastScanLog) return;
+  window._lastScanLog.insan_onayi = 'ONAYLANDI';
+  document.getElementById('wHitl').textContent = '✓ Onaylandı';
+  document.getElementById('wHitl').style.color = 'var(--green)';
+  document.getElementById('hitlBtn').disabled = true;
+  document.getElementById('hitlRejectBtn').disabled = true;
+  // IndexedDB güncelle
+  updateHITL(window._lastScanLog.islem_id, 'approved');
+}
+
+function rejectHITL() {
+  if (!window._lastScanLog) return;
+  window._lastScanLog.insan_onayi = 'REDDEDİLDİ';
+  document.getElementById('wHitl').textContent = '✗ Reddedildi';
+  document.getElementById('wHitl').style.color = 'var(--red)';
+  document.getElementById('hitlBtn').disabled = true;
+  document.getElementById('hitlRejectBtn').disabled = true;
+  updateHITL(window._lastScanLog.islem_id, 'rejected');
+}
+
+async function updateHITL(worm_hash, status) {
+  if (!wormDB) return;
+  const tx = wormDB.transaction(WORM_STORE, 'readwrite');
+  const store = tx.objectStore(WORM_STORE);
+  const req = store.get(worm_hash);
+  req.onsuccess = () => {
+    const rec = req.result;
+    if (rec) { rec.hitl = status; store.put(rec); }
+  };
+}
+
+function exportJSON() {
+  if (!window._lastScanLog) return;
+  const json = JSON.stringify(window._lastScanLog, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `veritas_karar_logu_${window._lastScanLog.islem_id.slice(0,12)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportPDF() {
+  if (!window._lastScanLog) return;
+  const box = document.getElementById('wormBox');
+  const printWin = window.open('', '_blank', 'width=800,height=600');
+  printWin.document.write(`<!DOCTYPE html><html><head><title>Veritas Karar Logu</title>
+    <style>body{font-family:monospace;padding:24px;background:#04080d;color:#c8e0c8;}
+    .worm-key{color:#ffd700;display:inline-block;width:160px;}
+    .worm-val{color:#c8e0c8;}.hash{color:#00ff88;word-break:break-all;font-size:11px;}
+    .safe{color:#00ff88;font-weight:bold;} h1{color:#00d4ff;font-size:16px;margin-bottom:16px;}
+    .phi-tag{display:inline-block;border:1px solid #ff4444;color:#ff4444;padding:2px 8px;margin:2px;border-radius:3px;font-size:11px;}
+    @media print{body{background:#fff;color:#000;}.worm-key{color:#333;}.hash{color:#006600;}}
+    </style></head><body>`);
+  printWin.document.write('<h1>🔒 YAPAY ZEKA KARAR LOGU — Veritas Mechanic</h1>');
+  printWin.document.write(box.innerHTML);
+  printWin.document.write('</body></html>');
+  printWin.document.close();
+  setTimeout(() => { printWin.print(); }, 500);
+}
+
+function copyHash(elId) {
+  const text = document.getElementById(elId).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const t = document.getElementById('toast');
+    t.textContent = 'Hash kopyalandı';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  });
+}
+
+// ── ROI CALC ────────────────────────────────────────────
+function calcRoi() {
+  const engCount  = +document.getElementById('r1').value || 0;
+  const engSalary = +document.getElementById('r2').value || 0;
+  const devMonths = +document.getElementById('r3').value || 0;
+  const legal     = +document.getElementById('r4').value || 0;
+  const queries   = +document.getElementById('r5').value || 0; // thousands/month
+
+  const buildDev   = engCount * engSalary * devMonths;
+  const infra      = 12000; // annual
+  const totalBuild = buildDev + legal + infra;
+
+  // VM cost
+  const monthlyQueries = queries * 1000;
+  const freeQueries = 10000;
+  const paidQueries = Math.max(0, monthlyQueries - freeQueries);
+  const vmMonthly   = Math.max(0, paidQueries * 0.012);
+  const vmAnnual    = vmMonthly * 12;
+
+  const saved = totalBuild - vmAnnual;
+
+  document.getElementById('buildCost').textContent  = '$' + fmt(buildDev + legal);
+  document.getElementById('infraCost').textContent  = '$' + fmt(infra);
+  document.getElementById('totalBuild').textContent = '$' + fmt(totalBuild);
+  document.getElementById('vmCost').textContent     = '$' + fmt(vmAnnual);
+  document.getElementById('savings').textContent    = '$' + fmt(Math.max(0, saved));
+  document.getElementById('timeSave').textContent   = devMonths;
+}
+
+function fmt(n) {
+  return Math.round(n).toLocaleString('en-US');
+}
+
+// ── SDK TABS ────────────────────────────────────────────
+function switchTab(id, el) {
+  document.querySelectorAll('.sdk-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sdk-content').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// ── ENDPOINT ACCORDION ──────────────────────────────────
+function toggleEndpoint(el) {
+  const body = el.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  document.querySelectorAll('.endpoint-body').forEach(b => b.classList.remove('open'));
+  if (!isOpen) body.classList.add('open');
+}
+
+// ── COPY ────────────────────────────────────────────────
+function copyCode(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  });
+}
+
+function scrollTo(sel) {
+  document.querySelector(sel)?.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── API STATUS CHECK ─────────────────────────────────────
+async function checkApi() {
+  const dot   = document.getElementById('apiDot');
+  const label = document.getElementById('apiLabel');
+  try {
+    const r = await fetch('http://localhost:8000/api/v1/health', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      dot.className = 'api-dot live';
+      label.textContent = 'API: Canlı (localhost:8000)';
+      label.style.color = 'var(--green)';
+      return;
+    }
+  } catch {}
+  dot.className = 'api-dot sim';
+  label.textContent = 'Yerel motor aktif — sunucu gerektirmez';
+  label.style.color = 'var(--gold)';
+}
+
+// ── INIT ─────────────────────────────────────────────────
+calcRoi();
+checkApi();
+setInterval(checkApi, 30000);
+// IndexedDB aç + geçmiş sayısını göster
+openWormDB().then(async () => {
+  const scans = await getAllScans();
+  document.getElementById('histCount').textContent = scans.length;
+});
+// Bekleyen sync'leri her 60 saniyede dene
+setInterval(syncAllPending, 60000);
+setTimeout(syncAllPending, 5000);
+// NER modelini arka planda yükle
+setTimeout(loadNER, 2000);
+// Global erişim (module scope)
+window.runScan = runScan;
+window.loadSample = loadSample;
+window.calcRoi = calcRoi;
+window.switchTab = switchTab;
+window.toggleEndpoint = toggleEndpoint;
+window.copyCode = copyCode;
+window.toggleHistory = toggleHistory;
+window.approveHITL = approveHITL;
+window.rejectHITL = rejectHITL;
+window.exportJSON = exportJSON;
+window.exportPDF = exportPDF;
+window.copyHash = copyHash;
+window.scrollTo = function(sel) { document.querySelector(sel)?.scrollIntoView({ behavior: 'smooth' }); };
+</script>
+</body>
+</html>
